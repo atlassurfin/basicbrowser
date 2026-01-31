@@ -59,7 +59,7 @@ class BBrowser(QMainWindow):
         self.progress_bar.setFixedHeight(2)
         self.progress_bar.setTextVisible(False)
         self.progress_bar.setStyleSheet("""
-            QProgessBar { border: none; background: transparent; }
+            QProgressBar { border: none; background: transparent; }
             QProgressBar::chunk {background-color: #66E0FF; }
         """)
         self.progress_bar.hide()
@@ -138,9 +138,9 @@ class BBrowser(QMainWindow):
 
         #Creazione preferiti
 
-        self.add_to_bmarks("GitHub", "https://github.com")
-        self.add_to_bmarks("YouTube", "https://www.youtube.com")
-        self.add_to_bmarks("W3Schools", "https.//www.w3schools.com")
+        self.create_bmark_btn("GitHub", "https://github.com")
+        self.create_bmark_btn("YouTube", "https://www.youtube.com")
+        self.create_bmark_btn("W3Schools", "https://www.w3schools.com")
 
         #Layout Verticale (principale)
         main_layout = QVBoxLayout()
@@ -163,9 +163,20 @@ class BBrowser(QMainWindow):
         self.browser.loadProgress.connect(self.progress_bar.setValue)
         self.browser.loadFinished.connect(self.progress_bar.hide)
 
-    #Funzione per caricare sito inserito da user
+    #Funzioni utili
 
-    def add_to_bmarks(self, title, url):
+    def create_bmark_btn(self, title, url):
+        btn = QPushButton(title)
+        btn.setObjectName("BookmarkBtn")
+        btn.setIcon(QIcon("assets/star.png"))
+        btn.clicked.connect(lambda: self.browser.setUrl(QUrl(url)))
+
+        btn.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        btn.customContextMenuRequested.connect(lambda pos: self.show_bmark_menu(pos, btn))
+
+        self.bookmark_layout.insertWidget(0, btn)
+
+    def add_to_bmarks(self):
         """Funzione usata per aggiungere preferiti """
         url = self.browser.url().toString()
         title = self.browser.page().title()
@@ -179,9 +190,9 @@ class BBrowser(QMainWindow):
         )
 
         if(reply == QMessageBox.StandardButton.Yes):
-            self.add_to_bmarks(title, url)
+            self.create_bmark_btn(title, url)
     
-    def show_bookmark_menu(self, pos, button):
+    def show_bmark_menu(self, pos, button):
         menu = QMenu()
         remove_action = menu.addAction("Rimuovi preferito")
 
