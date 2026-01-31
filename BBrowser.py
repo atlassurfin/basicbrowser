@@ -2,7 +2,8 @@ import sys
 from PyQt6.QtCore import QUrl, QSize, Qt
 from PyQt6.QtGui import QIcon
 from PyQt6.QtWidgets import (QApplication, QMainWindow, QLineEdit, 
-                            QVBoxLayout, QHBoxLayout, QWidget, QPushButton, QMenu)
+                            QVBoxLayout, QHBoxLayout, QWidget, 
+                            QPushButton, QMenu, QProgressBar, QMessageBox)
 from PyQt6.QtWebEngineWidgets import QWebEngineView
 
 
@@ -13,7 +14,7 @@ class BBrowser(QMainWindow):
 
 
         #Finestra principale
-        self.setWindowTitle("My First Browser I Guess -_-'' ")
+        self.setWindowTitle("My First Browser ^3^ ")
         #qui metterò l'icona del browser, magari creerò il logo con un servizio gratuito o prendo spunto da altri loghi
         self.resize(1024, 768)
 
@@ -53,7 +54,19 @@ class BBrowser(QMainWindow):
         self.home_url = "https://www.google.com"
         self.browser.setUrl(QUrl(self.home_url))
 
+        #Progress Bar
+        self.progress_bar = QProgressBar()
+        self.progress_bar.setFixedHeight(2)
+        self.progress_bar.setTextVisible(False)
+        self.progress_bar.setStyleSheet("""
+            QProgessBar { border: none; background: transparent; }
+            QProgressBar::chunk {background-color: #66E0FF; }
+        """)
+        self.progress_bar.hide()
+
         #Creazione pulsanti e collegamento a funzioni
+        nav_layout = QHBoxLayout()
+
         self.btn_back = QPushButton()
         self.btn_back.setIcon(QIcon("assets/back.png"))
         self.btn_back.setIconSize(QSize(24, 24))
@@ -69,15 +82,15 @@ class BBrowser(QMainWindow):
         self.btn_reload.setIconSize(QSize(24, 24))
         self.btn_reload.clicked.connect(self.browser.reload)
 
+        #Barra URL
+        self.url_bar = QLineEdit()
+        self.url_bar.returnPressed.connect(self.browse_to_site)
+
         self.btn_home = QPushButton()
         self.btn_home.setIcon(QIcon("assets/home.png"))
         self.btn_home.setIconSize(QSize(24, 24))
         self.btn_home.clicked.connect(self.go_home)
-
-
-        #Barra URL
-        self.url_bar = QLineEdit()
-        self.url_bar.returnPressed.connect(self.browse_to_site)
+        
 
         #Pulsante per aggiungere preferiti
         self.btn_addbkm = QPushButton()
@@ -107,7 +120,7 @@ class BBrowser(QMainWindow):
 
 
         #Layout Orizzontale per comandi
-        nav_layout = QHBoxLayout()
+        
         nav_layout.addWidget(self.btn_back)
         nav_layout.addWidget(self.btn_forward)
         nav_layout.addWidget(self.btn_reload)
@@ -119,65 +132,72 @@ class BBrowser(QMainWindow):
 
         #Barra Preferiti
         self.bookmark_layout = QHBoxLayout()
-        self.bookmark_layout.setContentsMargins(10, 0, 10, 0)
+        self.bookmark_layout.setContentsMargins(10, 2, 10, 2)
+        self.bookmark_layout.setSpacing(5)
         self.bookmark_layout.addStretch()
 
-        #Creo un po' di segnalibri
-        btn_git = QPushButton("GitHub")
-        btn_git.setObjectName("BookmarkBtn")
-        btn_git.setIcon(QIcon("assets/star.png"))
-        btn_git.clicked.connect(lambda: self.browser.setUrl(QUrl("https://github.com")))
+        #Creazione preferiti
 
-        btn_yt = QPushButton("YouTube")
-        btn_yt.setObjectName("BookmarkBtn")
-        btn_yt.setIcon(QIcon("assets/star.png"))
-        btn_yt.clicked.connect(lambda: self.browser.setUrl(QUrl("https://www.youtube.com")))
-
-        self.bookmark_layout.addWidget(btn_git)
-        self.bookmark_layout.addWidget(btn_yt)
-        self.bookmark_layout.addStretch()
-
-
+        self.add_to_bmarks("GitHub", "https://github.com")
+        self.add_to_bmarks("YouTube", "https://www.youtube.com")
+        self.add_to_bmarks("W3Schools", "https.//www.w3schools.com")
 
         #Layout Verticale (principale)
         main_layout = QVBoxLayout()
-        main_layout.addLayout(nav_layout) #metto barra comandi sopra
-        main_layout.addLayout(self.bookmark_layout) #aggiungo barra preferiti
-        main_layout.addWidget(self.browser) #metto browser sotto
+        main_layout.setSpacing(0)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+
+        main_layout.addLayout(nav_layout)
+        main_layout.addLayout(self.bookmark_layout)
+        main_layout.addWidget(self.progress_bar)
+        main_layout.addWidget(self.browser)
 
         #Contenitore per layout
         container = QWidget()
         container.setLayout(main_layout)
         self.setCentralWidget(container)
 
-
-        #Sincronizzazione
+        #Connessioni
         self.browser.urlChanged.connect(self.update_url_bar)
+        self.browser.loadStarted.connect(self.progress_bar.show)
+        self.browser.loadProgress.connect(self.progress_bar.setValue)
+        self.browser.loadFinished.connect(self.progress_bar.hide)
 
     #Funzione per caricare sito inserito da user
 
-    def add_to_bmarks(self):
+    def add_to_bmarks(self, title, url):
+        """Funzione usata per aggiungere preferiti """
         url = self.browser.url().toString()
         title = self.browser.page().title()
+        if len(title) > 20: title = title[:17] + "..."
 
-        if len(title) > 15: title = title[:12] + "..."
+        reply = QMessageBox.question(
+            self,
+            "Aggiungi Preferito",
+            f"Vuoi aggiungere '{title}' ai tuoi preferiti ? ",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+        )
 
-        new_bmk = QPushButton(title)
-        new_bmk.setObjectName("BookmarkBtn")
-        new_bmk.setIcon(QIcon("assets/star.png"))
-        new_bmk.clicked.connect(lambda: self.browser.setUrl(QUrl(url)))
-        new_bmk.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
-        new_bmk.customContextMenuRequested.connect(lambda pos: self.show_bookmark_menu(pos, new_bmk))
-
-        self.bookmark_layout.insertWidget(0, new_bmk)
-
+        if(reply == QMessageBox.StandardButton.Yes):
+            self.add_to_bmarks(title, url)
+    
     def show_bookmark_menu(self, pos, button):
         menu = QMenu()
         remove_action = menu.addAction("Rimuovi preferito")
 
         action = menu.exec(button.mapToGlobal(pos))
+
         if action == remove_action:
-            button.deleteLater()
+            confirm = QMessageBox.warning(
+                self,
+                "Rimuovi Preferito",
+                "Sei sicuro di voler rimuovere questo preferito ? ",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+            )
+
+            if(confirm == QMessageBox.StandardButton.Yes):
+                button.deleteLater()
+            
 
     def browse_to_site(self):
         url = self.url_bar.text()
